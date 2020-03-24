@@ -48,12 +48,14 @@ if [ "$DISTRIBUTION" == "fedora" ]; then
     fi
 fi
 
-
 if ! grep -q LANG= ${INSTALLDIR}/etc/locale.conf 2>/dev/null; then
     if [ "$DISTRIBUTION" == "fedora" ]; then
         echo "LANG=C.UTF-8" >> ${INSTALLDIR}/etc/locale.conf
     fi
     if [ "$DISTRIBUTION" == "centos" ]; then
+        echo "LANG=en_US.UTF-8" >> ${INSTALLDIR}/etc/locale.conf
+    fi
+    if [ "$DISTRIBUTION" == "opensuse" ]; then
         echo "LANG=en_US.UTF-8" >> ${INSTALLDIR}/etc/locale.conf
     fi
 fi
@@ -69,8 +71,15 @@ if ! containsFlavor "minimal" && [ "0$TEMPLATE_ROOT_WITH_PARTITIONS" -eq 1 ]; th
     yumInstall grub2 qubes-kernel-vm-support || RETCODE=1
     if [ -x $INSTALLDIR/usr/sbin/dkms ]; then
         yumInstall make || RETCODE=1
+
+        # TODO It's difficult to deduce installed OpenSUSE kernel package names from modules directory
         for kver in $(ls ${INSTALLDIR}/lib/modules); do
-            yumInstall kernel-devel-${kver} || RETCODE=1
+            if [ "$DISTRIBUTION" == "opensuse" ]; then
+                yumInstall kernel-devel || RETCODE=1                
+            else
+                yumInstall kernel-devel-${kver} || RETCODE=1
+            fi
+
             chroot_cmd dkms autoinstall -k "$kver" || RETCODE=1
         done
     fi

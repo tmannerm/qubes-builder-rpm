@@ -40,6 +40,12 @@ if [ "${DIST#centos}" != "${DIST}" ]; then
     fi
 fi
 
+if [ "${DIST#lp}" != "${DIST}" ]; then
+    DISTRIBUTION="opensuse"
+    DIST_VER="${DIST#lp}"
+    DIST_VER=$(sed 's/.\{1\}$/.&/' <<< "$DIST_VER")
+fi
+
 if [ -e "${PLUGIN_DIR}/yum-bootstrap-${DISTRIBUTION}-${DIST_VER}.conf" ]; then
     YUM_BOOTSTRAP_CONF=yum-bootstrap-${DISTRIBUTION}-${DIST_VER}.conf
 else
@@ -80,8 +86,15 @@ if ! [ -f "${INSTALLDIR}/tmp/.prepared_base" ]; then
 
     if [ "${DISTRIBUTION}" = "centos" ]; then
         rpm "${RPM_OPTS[@]}" --import --root="${INSTALLDIR}" \
-            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-CentOS-${DIST_VER}"\
+            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-CentOS-${DIST_VER}" \
             "${PLUGIN_DIR}/keys/RPM-GPG-KEY-EPEL-${DIST_VER}"
+    fi
+
+    if [ "${DISTRIBUTION}" = "opensuse" ]; then
+        rpm "${RPM_OPTS[@]}" --import --root="${INSTALLDIR}" \
+            "${PLUGIN_DIR}/keys/gpg-pubkey-3dbdc284-53674dd4.asc" \
+            "${PLUGIN_DIR}/keys/gpg-pubkey-39db7c82-5847eb1f.asc" \
+            "${PLUGIN_DIR}/keys/gpg-pubkey-307e3d54-5aaa90a5.asc"
     fi
 
     echo "-> Retreiving core RPM packages..."
@@ -185,6 +198,19 @@ if ! [ -f "${INSTALLDIR}/tmp/.prepared_base" ]; then
         fi
     fi
 
+    if [ "${DISTRIBUTION}" = "opensuse" ]; then
+        INITIAL_PACKAGES="filesystem aaa_base openSUSE-release dnf dnf-plugins-core"
+        mkdir -p "${DOWNLOADDIR}"
+        yumconf=$(mktemp)
+        sed -e "s/\\\$releasever/${DIST_VER}/g" < "${PLUGIN_DIR}/${YUM_BOOTSTRAP_CONF}" > "$yumconf"
+
+        # TODO This mess needs to be sorted out in some other manner
+        dnf config-manager --disable '*modular'
+        dnf config-manager --disable 'updates'
+        dnf config-manager --disable 'fedora'
+        dnf config-manager --disable 'qubes-vm-r4.0-current'
+    fi
+
     # shellcheck disable=SC2086
     $YUM "${YUM_OPTS[@]}" -c "$yumconf" -y \
         --installroot="${INSTALLDIR}" ${INITIAL_PACKAGES}
@@ -252,6 +278,14 @@ if ! [ -f "${INSTALLDIR}/tmp/.prepared_base" ]; then
         if [ "${DIST_VER}" = "8" ]; then
             sed -i "s/enabled=0/enabled=1/g" "${INSTALLDIR}/etc/yum.repos.d/CentOS-PowerTools.repo"
         fi
+    fi
+
+    if [ "${DISTRIBUTION}" = "opensuse" ]; then
+        # Instead of commenting/uncommenting lines in repository files which don't exist in OpenSUSE,
+        # just put actual repository files in place to be used with dnf.
+        mkdir -p "${INSTALLDIR}/etc/yum.repos.d/"
+        cp -d "${PLUGIN_DIR}/repos/opensuse-vm-repo-oss.repo" "${INSTALLDIR}/etc/yum.repos.d/repo-oss.repo"
+        cp -d "${PLUGIN_DIR}/repos/opensuse-vm-repo-update.repo" "${INSTALLDIR}/etc/yum.repos.d/repo-updates.repo"
     fi
 
     touch "${INSTALLDIR}/tmp/.prepared_base"

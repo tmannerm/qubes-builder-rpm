@@ -28,6 +28,12 @@ if [ "${DIST#centos}" != "${DIST}" ]; then
     fi
 fi
 
+if [ "${DIST#lp}" != "${DIST}" ]; then
+    DISTRIBUTION="opensuse"
+	DIST_VER="${DIST#lp}"
+	DIST_VER=$(sed 's/.\{1\}$/.&/' <<< "$DIST_VER")
+fi
+
 if [ -n "$3" ]; then
     PKGLISTFILE="$3"
 else
@@ -71,6 +77,11 @@ elif ! [ -d "$DIR/home/user/.prepared_base" ]; then
 
     # Always install at least base pkgs
     cp  "${PLUGIN_DIR}/yum.conf" "$DIR/tmp/"
+
+    # Ensure possible qubes-builder-vm* repos have been disabled
+    # TODO Find a better fix (related to building OpenSUSE template)
+    chroot "$DIR" $YUM config-manager --disable 'qubes-builder-vm*' -c /tmp/yum.conf
+
     # shellcheck disable=SC2086,SC2046
     chroot "$DIR" $YUM install -c /tmp/yum.conf -y $YUM_OPTS \
         $(cat ${PLUGIN_DIR}/build-pkgs-base-${DISTRIBUTION}.list)
@@ -94,7 +105,7 @@ elif ! [ -d "$DIR/home/user/.prepared_base" ]; then
     fi
     existing_uid=$(chroot "$DIR" id -u user 2>/dev/null || :)
     if [ -z "$existing_uid" ]; then
-        chroot "$DIR" useradd -g user -u "$USER_UID" user
+        chroot "$DIR" useradd -m -g user -u "$USER_UID" user
     elif [ "$existing_uid" != "$USER_UID" ]; then
         chroot "$DIR" usermod -u "$USER_UID" user
     fi
@@ -126,9 +137,13 @@ if [ -n "$USE_QUBES_REPO_VERSION" ]; then
     if [ "${DISTRIBUTION}" = "centos" ]; then
         QUBES_SIGNING_KEY="RPM-GPG-KEY-qubes-$USE_QUBES_REPO_VERSION-centos"
     fi
+    if [ "${DISTRIBUTION}" = "opensuse" ]; then
+        # TODO No RPM-GPG-KEY-qubes-$USE_QUBES_REPO_VERSION-opensuse key(s) for packages yet. Just use something for now.
+        QUBES_SIGNING_KEY="RPM-GPG-KEY-qubes-$USE_QUBES_REPO_VERSION-primary"
+    fi
 
     if [ -r "${PLUGIN_DIR}/keys/$QUBES_SIGNING_KEY" ]; then
-        cp "${PLUGIN_DIR}/keys/$QUBES_SIGNING_KEY" "$DIR/etc/pki/rpm-gpg/"
+        cp -r "${PLUGIN_DIR}/keys/$QUBES_SIGNING_KEY" "$DIR/etc/pki/rpm-gpg/"
         chroot "$DIR" rpm --import "/etc/pki/rpm-gpg/$QUBES_SIGNING_KEY" || true
     fi
 
@@ -168,4 +183,32 @@ fi
 # resolving dependencies
 if [ "$DISTRIBUTION" = "fedora" ] && [ "${DIST_VER}" -ge 29 ]; then
     chroot "$DIR" dnf config-manager --disable '*modular'
+fi
+
+# TODO Someone from Qubes should take a look at this. OpenSUSE has named
+# these files differently and are also found from different directories
+# when compared to Fedora. Qubes Xen compile fails if this isn't done. And
+# so proper fix should probably be added to Qubes xen.spec, I guess.
+if [ "$DISTRIBUTION" = "opensuse" ]; then
+    if [ ! -L '/usr/share/ipxe/10ec8139.rom' ]; then
+
+        # This directory might exist in OpenSUSE or not.
+        if [ ! -d '/usr/share/ipxe/' ]; then
+            chroot "$DIR" mkdir -p '/usr/share/ipxe'
+        fi
+
+        chroot "$DIR" ln -s '/usr/share/qemu/pxe-rtl8139.rom' '/usr/share/ipxe/10ec8139.rom'
+    fi
+
+    if [ ! -L '/usr/share/ipxe/8086100e.rom' ]; then
+        chroot "$DIR" ln -s '/usr/share/qemu/pxe-e1000.rom' '/usr/share/ipxe/8086100e.rom'
+    fi
+
+    if [ ! -d '/usr/share/edk2/ovmf/' ]; then
+        chroot "$DIR" mkdir -p '/usr/share/edk2/ovmf/'
+        
+        # Since the directory didn't exist, we can safely assume that the links also don't exist.
+        chroot "$DIR" ln -s '/usr/share/qemu/ovmf-x86_64-vars.bin' '/usr/share/edk2/ovmf/OVMF_VARS.fd'
+        chroot "$DIR" ln -s '/usr/share/qemu/ovmf-x86_64-code.bin' '/usr/share/edk2/ovmf/OVMF_CODE.fd'
+    fi
 fi

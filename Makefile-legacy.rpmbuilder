@@ -57,7 +57,7 @@ ifndef PACKAGE
 	$(error "PACKAGE need to be set!")
 endif
 	$(RPM_PLUGIN_DIR)/update-local-repo.sh $(DIST)
-	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) sh -c 'cd $(DIST_SRC); $(YUM) $(YUM_OPTS) --refresh -y update'
+	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) sh -c 'cd $(DIST_SRC); $(YUM) $(YUM_OPTS) --nobest --allowerasing --skip-broken --refresh -y update'
 
 dist-build-dep: refresh-update.$(YUM) dist-build-dep$(suffix $(PACKAGE))
 
