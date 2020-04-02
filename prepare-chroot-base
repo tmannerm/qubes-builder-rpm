@@ -92,9 +92,9 @@ if ! [ -f "${INSTALLDIR}/tmp/.prepared_base" ]; then
 
     if [ "${DISTRIBUTION}" = "opensuse" ]; then
         rpm "${RPM_OPTS[@]}" --import --root="${INSTALLDIR}" \
-            "${PLUGIN_DIR}/keys/gpg-pubkey-3dbdc284-53674dd4.asc" \
-            "${PLUGIN_DIR}/keys/gpg-pubkey-39db7c82-5847eb1f.asc" \
-            "${PLUGIN_DIR}/keys/gpg-pubkey-307e3d54-5aaa90a5.asc"
+            "${PLUGIN_DIR}/keys/gpg-pubkey-3dbdc284-53674dd4-opensuse-lp151.asc" \
+            "${PLUGIN_DIR}/keys/gpg-pubkey-39db7c82-5847eb1f-opensuse-lp151.asc" \
+            "${PLUGIN_DIR}/keys/gpg-pubkey-307e3d54-5aaa90a5-opensuse-lp151.asc"
     fi
 
     echo "-> Retreiving core RPM packages..."
