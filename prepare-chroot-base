@@ -97,7 +97,7 @@ if ! [ -f "${INSTALLDIR}/tmp/.prepared_base" ]; then
             "${PLUGIN_DIR}/keys/gpg-pubkey-307e3d54-5aaa90a5-opensuse-lp151.asc"
     fi
 
-    echo "-> Retreiving core RPM packages..."
+    echo "-> Retrieving core RPM packages..."
 
     if [ "${DISTRIBUTION}" = "fedora" ]; then
         INITIAL_PACKAGES="filesystem setup fedora-release dnf dnf-plugins-core"
@@ -204,11 +204,9 @@ if ! [ -f "${INSTALLDIR}/tmp/.prepared_base" ]; then
         yumconf=$(mktemp)
         sed -e "s/\\\$releasever/${DIST_VER}/g" < "${PLUGIN_DIR}/${YUM_BOOTSTRAP_CONF}" > "$yumconf"
 
-        # TODO This mess needs to be sorted out in some other manner
-        dnf config-manager --disable '*modular'
-        dnf config-manager --disable 'updates'
-        dnf config-manager --disable 'fedora'
-        dnf config-manager --disable 'qubes-vm-r4.0-current'
+        # Only use configured repositories (host repos will fail to fetch)
+        YUM_OPTS+=("--repo=repo-oss")
+        YUM_OPTS+=("--repo=repo-updates")
     fi
 
     # shellcheck disable=SC2086
