@@ -79,8 +79,8 @@ endif
 endif
 
 ifeq (opensuse,$(DISTRIBUTION))
-	DIST_VER="${DIST#lp}"
-	DIST_VER=$(sed 's/.\{1\}$/.&/' <<< "$DIST_VER")
+	DIST_VER = $(subst lp,,$(DIST))
+	DIST_VER := $(shell sed 's/.\{1\}$$/.&/' <<< "$(DIST_VER)")
 
 	RPM_BUILD_DEFINES += --define "opensuse $(DIST_VER)"
 	RPM_QUERY_DEFINES += --define "opensuse $(DIST_VER)"
