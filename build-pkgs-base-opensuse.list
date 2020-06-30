@@ -49,7 +49,6 @@ python3
 yajl
 libyajl-devel
 libbz2-devel
-mingw64-binutils
 python-rpm-macros
 lsb
 lsb-release
