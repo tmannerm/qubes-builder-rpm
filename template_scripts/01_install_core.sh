@@ -17,5 +17,4 @@ fi
 
 cp -a /dev/null /dev/zero /dev/random /dev/urandom "${INSTALLDIR}/dev/"
 
-export YUM0=${PWD}/pkgs-for-template
 yumInstall $YUM

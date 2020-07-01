@@ -4,8 +4,6 @@ source "${SCRIPTSDIR}/distribution.sh"
 
 prepareChroot
 
-export YUM0=$PWD/pkgs-for-template
-
 cp ${SCRIPTSDIR}/template-builder-repo-$DISTRIBUTION.repo ${INSTALLDIR}/etc/yum.repos.d/
 if [ -n "$USE_QUBES_REPO_VERSION" ]; then
     sed -e "s/%QUBESVER%/$USE_QUBES_REPO_VERSION/g" \

@@ -15,7 +15,6 @@ trap cleanup EXIT
 #### '----------------------------------------------------------------------
 info " Installing extra packages in script_${DIST}/packages.list file"
 #### '----------------------------------------------------------------------
-export YUM0=${PWD}/pkgs-for-template
 chroot_cmd ${YUM} clean all
 installPackages
 yumUpdate
