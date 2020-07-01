@@ -180,31 +180,3 @@ fi
 if [ "$DISTRIBUTION" = "fedora" ] && [ "${DIST_VER}" -ge 29 ]; then
     chroot "$DIR" dnf config-manager --disable '*modular'
 fi
-
-# TODO Someone from Qubes should take a look at this. OpenSUSE has named
-# these files differently and are also found from different directories
-# when compared to Fedora. Qubes Xen compile fails if this isn't done. And
-# so proper fix should probably be added to Qubes xen.spec, I guess.
-if [ "$DISTRIBUTION" = "opensuse" ]; then
-    if [ ! -L '/usr/share/ipxe/10ec8139.rom' ]; then
-
-        # This directory might exist in OpenSUSE or not.
-        if [ ! -d '/usr/share/ipxe/' ]; then
-            chroot "$DIR" mkdir -p '/usr/share/ipxe'
-        fi
-
-        chroot "$DIR" ln -s '/usr/share/qemu/pxe-rtl8139.rom' '/usr/share/ipxe/10ec8139.rom'
-    fi
-
-    if [ ! -L '/usr/share/ipxe/8086100e.rom' ]; then
-        chroot "$DIR" ln -s '/usr/share/qemu/pxe-e1000.rom' '/usr/share/ipxe/8086100e.rom'
-    fi
-
-    if [ ! -d '/usr/share/edk2/ovmf/' ]; then
-        chroot "$DIR" mkdir -p '/usr/share/edk2/ovmf/'
-        
-        # Since the directory didn't exist, we can safely assume that the links also don't exist.
-        chroot "$DIR" ln -s '/usr/share/qemu/ovmf-x86_64-vars.bin' '/usr/share/edk2/ovmf/OVMF_VARS.fd'
-        chroot "$DIR" ln -s '/usr/share/qemu/ovmf-x86_64-code.bin' '/usr/share/edk2/ovmf/OVMF_CODE.fd'
-    fi
-fi
