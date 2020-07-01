@@ -95,7 +95,7 @@ function yumInstall() {
         mkdir -p ${INSTALLDIR}/var/lib/dnf
     fi
     mkdir -p ${INSTALLDIR}/tmp/template-builder-repo
-    mount --bind pkgs-for-template ${INSTALLDIR}/tmp/template-builder-repo
+    mount --bind "pkgs-for-template/${DIST}" "${INSTALLDIR}/tmp/template-builder-repo"
     if [ -e "${INSTALLDIR}/usr/bin/$YUM" ]; then
         cp ${SCRIPTSDIR}/template-builder-repo-$DISTRIBUTION.repo ${INSTALLDIR}/etc/yum.repos.d/
         chroot_cmd $YUM --downloadonly \
@@ -143,7 +143,7 @@ function yumGroupInstall() {
         optional=--setopt=group_package_types=mandatory,default,optional
     fi
     mkdir -p ${INSTALLDIR}/tmp/template-builder-repo
-    mount --bind pkgs-for-template ${INSTALLDIR}/tmp/template-builder-repo
+    mount --bind "pkgs-for-template/${DIST}" "${INSTALLDIR}/tmp/template-builder-repo"
     if [ -e "${INSTALLDIR}/usr/bin/$YUM" ]; then
         chroot_cmd $YUM clean expire-cache
         chroot_cmd $YUM --downloadonly \
@@ -179,7 +179,7 @@ function yumUpdate() {
         mkdir -p ${INSTALLDIR}/var/lib/dnf
     fi
     mkdir -p ${INSTALLDIR}/tmp/template-builder-repo
-    mount --bind pkgs-for-template ${INSTALLDIR}/tmp/template-builder-repo
+    mount --bind "pkgs-for-template/${DIST}" "${INSTALLDIR}/tmp/template-builder-repo"
     if [ -e "${INSTALLDIR}/usr/bin/$YUM" ]; then
         cp ${SCRIPTSDIR}/template-builder-repo-$DISTRIBUTION.repo ${INSTALLDIR}/etc/yum.repos.d/
         chroot_cmd $YUM --downloadonly \
