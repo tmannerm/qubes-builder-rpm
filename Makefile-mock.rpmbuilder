@@ -30,7 +30,7 @@ MOCK_EXTRA_OPTS += --enablerepo=qubes-current-testing
 endif
 endif
 
-MOCK_ENV = DIST=$(DIST) \
+MOCK_ENV = DIST=$(DIST) DIST_VER=$(DIST_VER) \
 		   PACKAGE_SET=$(PACKAGE_SET) \
 		   RPM_PLUGIN_DIR=$(RPM_PLUGIN_DIR) \
 		   USE_QUBES_REPO_VERSION=$(USE_QUBES_REPO_VERSION) \
@@ -56,8 +56,8 @@ dist-build-dep:
 
 dist-src-package-build:
 	cd $(CHROOT_DIR)$(DIST_SRC); sudo $(MOCK_ENV) $(MOCK) \
-		-v -r $(RPM_PLUGIN_DIR)/$(MOCK_CFG) \
-		--resultdir=$(CHROOT_DIR)/$(DIST_SRC)/$(OUTPUT_DIR) \
+		-v -r $(RPM_PLUGIN_DIR)$(MOCK_CFG) \
+		--resultdir=$(CHROOT_DIR)$(DIST_SRC)/$(OUTPUT_DIR) \
 		$(RPM_BUILD_DEFINES) \
 		$(MOCK_EXTRA_OPTS) \
 		--buildsrpm --spec $(PACKAGE) --sources $(CHROOT_DIR)$(RPM_SOURCE_DIR)
@@ -78,17 +78,17 @@ ifdef INCREMENT_DEVEL_VERSIONS
 	echo $(devel_ver) > $(devel_ver_path)
 endif
 	cd $(CHROOT_DIR)$(DIST_SRC); sudo $(MOCK_ENV) $(MOCK) \
-		--resultdir=$(CHROOT_DIR)/$(DIST_SRC)/$(OUTPUT_DIR) \
-		-v -r $(RPM_PLUGIN_DIR)/$(MOCK_CFG) \
+		--resultdir=$(CHROOT_DIR)$(DIST_SRC)/$(OUTPUT_DIR) \
+		-v -r $(RPM_PLUGIN_DIR)$(MOCK_CFG) \
 		$(MOCK_EXTRA_OPTS) --no-cleanup-after \
 		$(RPM_BUILD_DEFINES) --rebuild $(srcrpm)
 	sudo $(MOCK_ENV) $(MOCK) \
 		'--plugin-option=bind_mount:dirs=[("$(RPM_PLUGIN_DIR)", "/builder-rpm")]' \
-		-q -r $(RPM_PLUGIN_DIR)/$(MOCK_CFG) \
+		-q -r $(RPM_PLUGIN_DIR)$(MOCK_CFG) \
 		$(MOCK_EXTRA_OPTS) \
 		$(RPM_BUILD_DEFINES) --chroot \
 		'/builder-rpm/scripts/rpmbuildinfo /builddir/build/SRPMS/*.src.rpm' \
-		> $(CHROOT_DIR)/$(DIST_SRC)/$(OUTPUT_DIR)/$(buildinfo)
+		> $(CHROOT_DIR)$(DIST_SRC)/$(OUTPUT_DIR)/$(buildinfo)
 
 dist-copy-out: pkg_list_path = $(ORIG_SRC)/$(OUTPUT_DIR)/$(notdir $(PACKAGE)).list
 dist-copy-out:
