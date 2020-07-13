@@ -34,7 +34,7 @@ tree
 haveged
 sudo
 dejavu-fonts
-xorg-x11-fonts-legacy
+xorg-x11-fonts-100dpi
 --exclude=evolution,gdm
 --exclude=plymouth
 --exclude=vinagre
