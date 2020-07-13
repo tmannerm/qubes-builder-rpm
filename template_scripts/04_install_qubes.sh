@@ -92,6 +92,7 @@ fi
 
 # Distribution specific steps
 source ./functions.sh
+buildStep "${0}" "${DISTRIBUTION}"
 buildStep "${0}" "${DIST}"
 
 rm -f ${INSTALLDIR}/etc/yum.repos.d/template-builder-repo-$DISTRIBUTION.repo
