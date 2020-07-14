@@ -41,4 +41,3 @@ xorg-x11-fonts-100dpi
 --exclude=libreoffice*
 --exclude=avahi
 --exclude=gnome-user-docs
---exclude=wicked*
