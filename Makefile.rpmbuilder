@@ -88,8 +88,8 @@ ifeq (opensuse,$(DISTRIBUTION))
 	BUILD_PKG_LIST = build-pkgs-base-opensuse.list
 
 ifdef OPENSUSE_MIRROR
-	YUM_OPTS += --setopt=oss.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/distribution/leap/$(DIST_VER)/repo/oss/x86_64
-	YUM_OPTS += --setopt=updates.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/update/leap/$(DIST_VER)/oss/x86_64
+	YUM_OPTS += --setopt=repo-oss.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/distribution/leap/$(DIST_VER)/repo/oss
+	YUM_OPTS += --setopt=repo-updates.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/update/leap/$(DIST_VER)/oss
 endif
 
 endif

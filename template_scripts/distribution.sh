@@ -47,8 +47,8 @@ if [ "${DIST#lp}" != "${DIST}" ]; then
 	DIST_VER=$(sed 's/.\{1\}$/.&/' <<< "$DIST_VER")
 
     if [ -n "${OPENSUSE_MIRROR}" ]; then
-        YUM_OPTS="$YUM_OPTS --setopt=oss.baseurl=${OPENSUSE_MIRROR%/}/distribution/leap/${DIST_VER}/repo/oss/x86_64"
-        YUM_OPTS="$YUM_OPTS --setopt=updates.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/oss/x86_64"
+        YUM_OPTS="$YUM_OPTS --setopt=repo-oss.baseurl=${OPENSUSE_MIRROR%/}/distribution/leap/${DIST_VER}/repo/oss"
+        YUM_OPTS="$YUM_OPTS --setopt=repo-updates.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/oss"
     fi
 fi
 
