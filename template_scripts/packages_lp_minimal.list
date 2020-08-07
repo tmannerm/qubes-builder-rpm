@@ -1,2 +1,6 @@
+--setopt=install_weak_deps=false
 patterns-base-minimal_base
 patterns-base-x11
+xterm
+haveged
+sudo
