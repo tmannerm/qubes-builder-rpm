@@ -3,12 +3,16 @@
 RPM_BUILD_DEFINES += --define "_rpmdir $(OUTPUT_DIR)/"
 RPM_BUILD_DEFINES += --define "qubes_builder 1"
 RPM_BUILD_DEFINES += --define "backend_vmm $(BACKEND_VMM)"
-# Macro set_build_flags is only in RPM v4.15 or in redhat-rpm-macros package (Fedora-based only)
 ifeq (opensuse,$(DISTRIBUTION))
+# Macro set_build_flags is only in RPM v4.15 or in redhat-rpm-macros package (Fedora-based only)
 RPM_BUILD_DEFINES += --define "set_build_flags \
     export CFLAGS=\"$${CFLAGS:-%optflags}\" \
     export CXXFLAGS=\"$${CXXFLAGS:-%optflags}\" \
     export FFLAGS=\"$${FFLAGS:-%optflags}\""
+# Enable building debuginfo/debugsource packages
+RPM_BUILD_DEFINES += --define "_build_create_debug 1"
+RPM_BUILD_DEFINES += --define "prep %{?!__debug_package:%{?_build_create_debug:%?debug_package}}%%prep"
+RPM_BUILD_DEFINES += --define "package %{?!__debug_package:%{?_build_create_debug:%?debug_package}}%%package"
 endif
 RPM_QUERY_FORMAT = "$(OUTPUT_DIR)/%{ARCH}/%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}.rpm\\n"
 
