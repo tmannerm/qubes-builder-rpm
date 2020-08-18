@@ -2,7 +2,8 @@
 name=Main Update Repository
 enabled=1
 autorefresh=1
-baseurl=http://download.opensuse.org/update/leap/$releasever/oss/
+#baseurl=http://download.opensuse.org/update/leap/$releasever/oss/
+metalink=http://download.opensuse.org/update/leap/$releasever/oss/repodata/repomd.xml.metalink
 type=rpm-md
-gpgcheck=0
-# gpgkey=
+gpgcheck=1
+gpgkey=http://download.opensuse.org/update/leap/$releasever/oss/repodata/repomd.xml.key

@@ -2,8 +2,9 @@
 name=Main Repository
 enabled=1
 autorefresh=1
-baseurl=http://download.opensuse.org/distribution/leap/$releasever/repo/oss/
+#baseurl=http://download.opensuse.org/distribution/leap/$releasever/repo/oss/
+metalink=http://download.opensuse.org/distribution/leap/$releasever/repo/oss/repodata/repomd.xml.metalink
 type=rpm-md
 keeppackages=0
-gpgcheck=0
-# gpgkey=
+gpgcheck=1
+gpgkey=http://download.opensuse.org/distribution/leap/$releasever/repo/oss/repodata/repomd.xml.key
