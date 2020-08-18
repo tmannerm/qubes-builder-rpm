@@ -65,15 +65,19 @@ if ! containsFlavor "minimal" && [ "0$TEMPLATE_ROOT_WITH_PARTITIONS" -eq 1 ]; th
     dev=$(df --output=source $INSTALLDIR | tail -n 1)
     dev=${dev%p?}
     # if root.img have partitions, install kernel and grub there
-    yumInstall kernel || RETCODE=1
+    # on openSUSE, install default kernel
+    if [ "$DISTRIBUTION" == "opensuse" ]; then
+        yumInstall kernel-default || RETCODE=1
+    else
+        yumInstall kernel || RETCODE=1
+    fi
     yumInstall grub2 qubes-kernel-vm-support || RETCODE=1
     if [ -x $INSTALLDIR/usr/sbin/dkms ]; then
         yumInstall make || RETCODE=1
 
-        # TODO It's difficult to deduce installed OpenSUSE kernel package names from modules directory
         for kver in $(ls ${INSTALLDIR}/lib/modules); do
             if [ "$DISTRIBUTION" == "opensuse" ]; then
-                yumInstall kernel-devel || RETCODE=1                
+                yumInstall kernel-default-devel || RETCODE=1
             else
                 yumInstall kernel-devel-${kver} || RETCODE=1
             fi
@@ -82,6 +86,10 @@ if ! containsFlavor "minimal" && [ "0$TEMPLATE_ROOT_WITH_PARTITIONS" -eq 1 ]; th
         done
     fi
     for kver in $(ls ${INSTALLDIR}/lib/modules); do
+        # On openSUSE, make sure default initrd file does not exist
+        if [ "$DISTRIBUTION" == "opensuse" ]; then
+            rm -f ${INSTALLDIR}/boot/initrd-${kver} || RETCODE=1
+        fi
         chroot_cmd dracut -f -a "qubes-vm" \
             /boot/initramfs-${kver}.img ${kver} || RETCODE=1
     done
