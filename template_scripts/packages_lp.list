@@ -8,6 +8,7 @@ patterns-fonts-fonts
 patterns-gnome-gnome
 patterns-gnome-gnome_multimedia
 vim-enhanced
+joe
 gnupg
 gnome-terminal
 xterm
