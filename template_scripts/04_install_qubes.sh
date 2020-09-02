@@ -77,7 +77,7 @@ if ! containsFlavor "minimal" && [ "0$TEMPLATE_ROOT_WITH_PARTITIONS" -eq 1 ]; th
 
         for kver in $(ls ${INSTALLDIR}/lib/modules); do
             if [ "$DISTRIBUTION" == "opensuse" ]; then
-                yumInstall kernel-default-devel || RETCODE=1
+                yumInstall kernel-devel || RETCODE=1
             else
                 yumInstall kernel-devel-${kver} || RETCODE=1
             fi
@@ -86,9 +86,19 @@ if ! containsFlavor "minimal" && [ "0$TEMPLATE_ROOT_WITH_PARTITIONS" -eq 1 ]; th
         done
     fi
     for kver in $(ls ${INSTALLDIR}/lib/modules); do
-        # On openSUSE, make sure default initrd file does not exist
         if [ "$DISTRIBUTION" == "opensuse" ]; then
-            rm -f ${INSTALLDIR}/boot/initrd-${kver} || RETCODE=1
+            # Make sure default initrd file doesn't exist so that the grub2
+            # will correctly use the one generated below
+            rm -f "${INSTALLDIR}/boot/initrd-${kver}" || RETCODE=1
+
+            # Check for a corresponding kernel before creating the initramfs
+            #
+            # This is because on openSUSE, kernel-preempt-devel package is needed for
+            # kernel-syms package but that doesn't pull in the actual kernel.
+            #
+            if [ ! -f "${INSTALLDIR}/boot/vmlinuz-${kver}" ]; then
+                continue
+            fi
         fi
         chroot_cmd dracut -f -a "qubes-vm" \
             /boot/initramfs-${kver}.img ${kver} || RETCODE=1
