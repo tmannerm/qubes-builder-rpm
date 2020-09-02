@@ -4,3 +4,4 @@ patterns-base-x11
 xterm
 haveged
 sudo
+yast2-proxy

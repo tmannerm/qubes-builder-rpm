@@ -6,6 +6,7 @@ patterns-base-console
 patterns-base-x11
 patterns-fonts-fonts
 patterns-gnome-gnome
+patterns-gnome-gnome_basic
 patterns-gnome-gnome_multimedia
 vim-enhanced
 joe
@@ -36,6 +37,12 @@ haveged
 sudo
 dejavu-fonts
 xorg-x11-fonts-100dpi
+yast2-proxy
+evince
+evince-plugin-pdfdocument
+nautilus
+nautilus-evince
+pulseaudio-module-x11
 --exclude=evolution,gdm
 --exclude=plymouth
 --exclude=vinagre
