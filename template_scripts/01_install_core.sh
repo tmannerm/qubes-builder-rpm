@@ -9,7 +9,7 @@ ${SCRIPTSDIR}/../prepare-chroot-base "${INSTALLDIR}" "${DIST}"
 cp "${SCRIPTSDIR}/resolv.conf" "${INSTALLDIR}/etc/"
 chmod 644 "${INSTALLDIR}/etc/resolv.conf"
 
-# TODO OpenSUSE has a 'network' directory.
+# No /etc/sysconfig/network file for openSUSE needed
 if [ "$DISTRIBUTION" != "opensuse" ]; then
     cp "${SCRIPTSDIR}/network" "${INSTALLDIR}/etc/sysconfig/"
     chmod 644 "${INSTALLDIR}/etc/sysconfig/network"
