@@ -78,6 +78,7 @@ elif ! [ -d "$DIR/home/user/.prepared_base" ]; then
     # Always install at least base pkgs
     cp  "${PLUGIN_DIR}/yum.conf" "$DIR/tmp/"
 
+    rm -f "$DIR/etc/yum.repos.d/builder-local.repo"
     # shellcheck disable=SC2086,SC2046
     chroot "$DIR" $YUM install -c /tmp/yum.conf -y $YUM_OPTS \
         $(cat ${PLUGIN_DIR}/build-pkgs-base-${DISTRIBUTION}.list)
@@ -167,16 +168,30 @@ chmod 644 "$DIR"/etc/fstab
 
 PKGGROUPS=$(cat "$PKGLISTFILE")
 echo "-> Installing package groups..."
-# shellcheck disable=SC2086,SC2046
-chroot "$DIR" "$YUM" install -y $YUM_OPTS $PKGGROUPS
-
-if [ -n "$CHROOT_CACHE_FILE" ]; then
-    tar cf "$CHROOT_CACHE_FILE" --one-file-system "$DIR"
-fi
 
 # Disable Fedora modular repos because
 # it can make dnf builddep to fail
 # resolving dependencies
 if [ "$DISTRIBUTION" = "fedora" ] && [ "${DIST_VER}" -ge 29 ]; then
     chroot "$DIR" dnf config-manager --disable '*modular'
+fi
+
+if [ "$DISTRIBUTION" = "centos" ]; then
+    if [ "${DIST_VER}" -eq 7 ]; then
+        chroot "$DIR" yum copr enable -y fepitre/epel-7-qubes
+    fi
+    if [ "${DIST_VER}" -eq 8 ]; then
+        chroot "$DIR" dnf copr enable -y fepitre/epel-8-qubes
+        chroot "$DIR" dnf config-manager --disable '*modular'
+        # Add Appstream and @fepitre python38 repositories
+        chroot "$DIR" dnf module enable -y python38-devel:3.8
+        chroot "$DIR" dnf copr enable -y fepitre/epel-8-python38
+    fi
+fi
+
+# shellcheck disable=SC2086,SC2046
+chroot "$DIR" "$YUM" install -y $YUM_OPTS $PKGGROUPS
+
+if [ -n "$CHROOT_CACHE_FILE" ]; then
+    tar cf "$CHROOT_CACHE_FILE" --one-file-system "$DIR"
 fi

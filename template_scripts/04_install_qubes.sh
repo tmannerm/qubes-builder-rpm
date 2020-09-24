@@ -4,13 +4,13 @@ source "${SCRIPTSDIR}/distribution.sh"
 
 prepareChroot
 
-cp ${SCRIPTSDIR}/template-builder-repo-$DISTRIBUTION.repo ${INSTALLDIR}/etc/yum.repos.d/
+cp "${SCRIPTSDIR}/template-builder-repo-$DISTRIBUTION.repo" "${INSTALLDIR}/etc/yum.repos.d/"
 if [ -n "$USE_QUBES_REPO_VERSION" ]; then
     sed -e "s/%QUBESVER%/$USE_QUBES_REPO_VERSION/g" \
-        < ${SCRIPTSDIR}/../repos/qubes-repo-vm-$DISTRIBUTION.repo \
-        > ${INSTALLDIR}/etc/yum.repos.d/template-qubes-vm.repo
+        < "${SCRIPTSDIR}/../repos/qubes-repo-vm-$DISTRIBUTION.repo" \
+        > "${INSTALLDIR}/etc/yum.repos.d/template-qubes-vm.repo"
     if [ "x$QUBES_MIRROR" != "x" ]; then
-        sed -i "s#baseurl.*yum.qubes-os.org#baseurl = $QUBES_MIRROR#" ${INSTALLDIR}/etc/yum.repos.d/template-qubes-vm.repo
+        sed -i "s#baseurl.*yum.qubes-os.org#baseurl = $QUBES_MIRROR#" "${INSTALLDIR}/etc/yum.repos.d/template-qubes-vm.repo"
     fi
     keypath="${BUILDER_DIR}/qubes-release-${USE_QUBES_REPO_VERSION}-signing-key.asc"
     if [ -r "$keypath" ]; then
@@ -31,7 +31,7 @@ fi
 
 echo "--> Installing RPMs..."
 if [ "x$TEMPLATE_FLAVOR" != "x" ]; then
-    installPackages packages_qubes_${TEMPLATE_FLAVOR}.list || RETCODE=1
+    installPackages "packages_qubes_${TEMPLATE_FLAVOR}.list" || RETCODE=1
 else
     installPackages packages_qubes.list || RETCODE=1
 fi
@@ -40,18 +40,18 @@ chroot_cmd sh -c 'rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-qubes-*'
 
 # WIP: currently limit to Fedora the add_3rd_party_software.sh
 if [ "$DISTRIBUTION" == "fedora" ]; then
-    if [ "$TEMPLATE_FLAVOR" != "minimal" ]; then
+    if [ "$TEMPLATE_FLAVOR" != "minimal" ] && ! elementIn 'no-third-party' "${TEMPLATE_OPTIONS[@]}"; then
         echo "--> Installing 3rd party apps"
-        $SCRIPTSDIR/add_3rd_party_software.sh || RETCODE=1
+        "$SCRIPTSDIR/add_3rd_party_software.sh" || RETCODE=1
     fi
 fi
 
-if ! grep -q LANG= ${INSTALLDIR}/etc/locale.conf 2>/dev/null; then
+if ! grep -q LANG= "${INSTALLDIR}/etc/locale.conf" 2>/dev/null; then
     if [ "$DISTRIBUTION" == "fedora" ]; then
-        echo "LANG=C.UTF-8" >> ${INSTALLDIR}/etc/locale.conf
+        echo "LANG=C.UTF-8" >> "${INSTALLDIR}/etc/locale.conf"
     fi
     if [ "$DISTRIBUTION" == "centos" ]; then
-        echo "LANG=en_US.UTF-8" >> ${INSTALLDIR}/etc/locale.conf
+        echo "LANG=en_US.UTF-8" >> "${INSTALLDIR}/etc/locale.conf"
     fi
     if [ "$DISTRIBUTION" == "opensuse" ]; then
         echo "LANG=en_US.UTF-8" >> ${INSTALLDIR}/etc/locale.conf
@@ -62,7 +62,7 @@ if ! containsFlavor "minimal" && [ "0$TEMPLATE_ROOT_WITH_PARTITIONS" -eq 1 ]; th
     chroot_cmd mount -t sysfs sys /sys
     chroot_cmd mount -t devtmpfs none /dev
     # find the right loop device, _not_ its partition
-    dev=$(df --output=source $INSTALLDIR | tail -n 1)
+    dev=$(df --output=source "$INSTALLDIR" | tail -n 1)
     dev=${dev%p?}
     # if root.img have partitions, install kernel and grub there
     # on openSUSE, install default kernel
@@ -72,36 +72,37 @@ if ! containsFlavor "minimal" && [ "0$TEMPLATE_ROOT_WITH_PARTITIONS" -eq 1 ]; th
         yumInstall kernel || RETCODE=1
     fi
     yumInstall grub2 qubes-kernel-vm-support || RETCODE=1
-    if [ -x $INSTALLDIR/usr/sbin/dkms ]; then
+    if [ -x "$INSTALLDIR/usr/sbin/dkms" ]; then
         yumInstall make || RETCODE=1
-
-        for kver in $(ls ${INSTALLDIR}/lib/modules); do
+        for kver in "${INSTALLDIR}"/lib/modules/*
+        do
+            kver="$(basename "$kver")"
             if [ "$DISTRIBUTION" == "opensuse" ]; then
-                yumInstall kernel-devel || RETCODE=1
-            else
-                yumInstall kernel-devel-${kver} || RETCODE=1
-            fi
+                # Make sure default initrd file doesn't exist so that the grub2
+                # will correctly use the one generated below
+                rm -f "${INSTALLDIR}/boot/initrd-${kver}" || RETCODE=1
 
+                # Check for a corresponding kernel before creating the initramfs
+                #
+                # This is because on openSUSE, kernel-preempt-devel package is needed for
+                # kernel-syms package but that doesn't pull in the actual kernel.
+                #
+                if [ ! -f "${INSTALLDIR}/boot/vmlinuz-${kver}" ]; then
+                    continue
+                fi
+
+                yumInstall "kernel-devel" || RETCODE=1
+            else
+                yumInstall "kernel-devel-${kver}" || RETCODE=1
+            fi
             chroot_cmd dkms autoinstall -k "$kver" || RETCODE=1
         done
     fi
-    for kver in $(ls ${INSTALLDIR}/lib/modules); do
-        if [ "$DISTRIBUTION" == "opensuse" ]; then
-            # Make sure default initrd file doesn't exist so that the grub2
-            # will correctly use the one generated below
-            rm -f "${INSTALLDIR}/boot/initrd-${kver}" || RETCODE=1
-
-            # Check for a corresponding kernel before creating the initramfs
-            #
-            # This is because on openSUSE, kernel-preempt-devel package is needed for
-            # kernel-syms package but that doesn't pull in the actual kernel.
-            #
-            if [ ! -f "${INSTALLDIR}/boot/vmlinuz-${kver}" ]; then
-                continue
-            fi
-        fi
+    for kver in "${INSTALLDIR}"/lib/modules/*
+    do
+        kver="$(basename "$kver")"
         chroot_cmd dracut -f -a "qubes-vm" \
-            /boot/initramfs-${kver}.img ${kver} || RETCODE=1
+            "/boot/initramfs-${kver}.img" "${kver}" || RETCODE=1
     done
     chroot_cmd grub2-install --target=i386-pc "$dev" || RETCODE=1
     chroot_cmd grub2-mkconfig -o /boot/grub2/grub.cfg || RETCODE=1
@@ -113,7 +114,7 @@ source ./functions.sh
 buildStep "${0}" "${DISTRIBUTION}"
 buildStep "${0}" "${DIST}"
 
-rm -f ${INSTALLDIR}/etc/yum.repos.d/template-builder-repo-$DISTRIBUTION.repo
-rm -f ${INSTALLDIR}/etc/yum.repos.d/template-qubes-vm.repo
+rm -f "${INSTALLDIR}/etc/yum.repos.d/template-builder-repo-$DISTRIBUTION.repo"
+rm -f "${INSTALLDIR}/etc/yum.repos.d/template-qubes-vm.repo"
 
 exit $RETCODE

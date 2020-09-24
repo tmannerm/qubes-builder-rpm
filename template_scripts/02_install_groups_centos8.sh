@@ -2,9 +2,7 @@
 # vim: set ts=4 sw=4 sts=4 et :
 
 source "${SCRIPTSDIR}/distribution.sh"
-
-# Create system mount points
-prepareChroot
+INSTALLDIR=${PWD}/mnt
 
 #### '----------------------------------------------------------------------
 info ' Trap ERR and EXIT signals and cleanup (umount)'
@@ -13,16 +11,14 @@ trap cleanup ERR
 trap cleanup EXIT
 
 #### '----------------------------------------------------------------------
-info ' Distribution specific steps (install systemd, add sources, etc)'
+info ' Enable fepitre/epel-8-qubes COPR repo'
 #### '----------------------------------------------------------------------
-buildStep "$0" "${DIST}"
+yumCopr enable fepitre/epel-8-qubes
 
 #### '----------------------------------------------------------------------
-info " Installing extra packages in script_${DIST}/packages.list file"
+info ' Enable fepitre/epel-8-python38 COPR repo'
 #### '----------------------------------------------------------------------
-chroot_cmd ${YUM} clean all
-installPackages
-yumUpdate
+yumCopr enable fepitre/epel-8-python38
 
 #### '----------------------------------------------------------------------
 info ' Cleanup'
