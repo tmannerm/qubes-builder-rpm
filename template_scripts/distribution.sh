@@ -30,6 +30,10 @@ if [ "${DIST#centos}" != "${DIST}" ]; then
         YUM=yum
     fi
 
+    if [ "${DIST_VER}" >= 8 ]; then
+        YUM_OPTS="$YUM_OPTS --nobest"
+    fi
+
     if [ -n "${CENTOS_MIRROR}" ]; then
         YUM_OPTS="$YUM_OPTS --setopt=base.baseurl=${CENTOS_MIRROR%/}/${DIST_VER}/os/x86_64"
         YUM_OPTS="$YUM_OPTS --setopt=updates.baseurl=${CENTOS_MIRROR%/}/${DIST_VER}/updates/x86_64"
@@ -50,6 +54,9 @@ if [ "${DIST#lp}" != "${DIST}" ]; then
         YUM_OPTS="$YUM_OPTS --setopt=repo-oss.baseurl=${OPENSUSE_MIRROR%/}/distribution/leap/${DIST_VER}/repo/oss"
         YUM_OPTS="$YUM_OPTS --setopt=repo-updates.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/oss"
     fi
+
+    # Firewalld package causes problems without --allowerasing
+    YUM_OPTS="$YUM_OPTS --allowerasing"
 fi
 
 # ==============================================================================
@@ -99,10 +106,10 @@ function yumInstall() {
     if [ -e "${INSTALLDIR}/usr/bin/$YUM" ]; then
         cp ${SCRIPTSDIR}/template-builder-repo-$DISTRIBUTION.repo ${INSTALLDIR}/etc/yum.repos.d/
         chroot_cmd $YUM --downloadonly \
-            install --allowerasing ${YUM_OPTS} -v -y ${files[@]} || exit 1
+            install ${YUM_OPTS} -v -y ${files[@]} || exit 1
         find ${INSTALLDIR}/var/cache/dnf -name '*.rpm' -print0 | xargs -r0 sha256sum
         find ${INSTALLDIR}/var/cache/yum -name '*.rpm' -print0 | xargs -r0 sha256sum
-        if [ "$DISTRIBUTION" = "fedora" ]; then
+        if [ "$DISTRIBUTION" = "fedora" ] || [ "$DISTRIBUTION" = "opensuse" ]; then
             # set http proxy to invalid one, to prevent any connection in case of
             # --cacheonly being buggy: better fail the build than install something
             # else than the logged one
@@ -112,10 +119,6 @@ function yumInstall() {
         if [ "$DISTRIBUTION" = "centos" ]; then
             # Temporarly disable previous strategy (problem with downloading cache qubes template repo)
             chroot_cmd $YUM install ${YUM_OPTS} -y ${files[@]} || exit 1
-        fi
-        if [ "$DISTRIBUTION" = "opensuse" ]; then
-            # TODO Firewalld package causes problems without --allowerasing
-            chroot_cmd $YUM install --allowerasing ${YUM_OPTS} -y ${files[@]} || exit 1
         fi
         rm -f ${INSTALLDIR}/etc/yum.repos.d/template-builder-repo-$DISTRIBUTION.repo
     else
@@ -150,14 +153,13 @@ function yumGroupInstall() {
             group install $optional ${YUM_OPTS} -y ${files[@]} || exit 1
         find ${INSTALLDIR}/var/cache/dnf -name '*.rpm' -print0 | xargs -r0 sha256sum
         find ${INSTALLDIR}/var/cache/yum -name '*.rpm' -print0 | xargs -r0 sha256sum
-        if [ "$DISTRIBUTION" = "fedora" ]; then
+        if [ "${DIST}" != "centos7" ]; then
             # set http proxy to invalid one, to prevent any connection in case of
             # --cacheonly being buggy: better fail the build than install something
             # else than the logged one
             chroot_cmd $YUM install ${YUM_OPTS} -y \
                 --cacheonly --setopt=proxy=http://127.0.0.1:1/ ${files[@]} || exit 1
-        fi
-        if [ "$DISTRIBUTION" = "centos" ]; then
+        else
             # Temporarly disable previous strategy (problem with downloading cache qubes template repo)
             chroot_cmd $YUM install ${YUM_OPTS} -y ${files[@]} || exit 1
         fi
@@ -263,4 +265,16 @@ function installPackages() {
         info "Packages: "${packages[@]}""
         yumInstall "${packages[@]}" || return $?
     done
+}
+
+# ==============================================================================
+# Enable or Disable Copr Fedora repositories
+# ==============================================================================
+function yumCopr() {
+    mount --bind /etc/resolv.conf ${INSTALLDIR}/etc/resolv.conf
+    local op=$1
+    local repo=$2
+
+    chroot_cmd $YUM copr ${op} -y $repo
+    umount ${INSTALLDIR}/etc/resolv.conf
 }
