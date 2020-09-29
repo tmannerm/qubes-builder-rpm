@@ -110,3 +110,9 @@ dist-copy-out:
 	mv $(CHROOT_DIR)/$(DIST_SRC)/$(OUTPUT_DIR)/*.buildinfo \
 		$(ORIG_SRC)/$(OUTPUT_DIR)/
 
+### Additional targets
+start-shell:
+	cd $(CHROOT_DIR)$(DIST_SRC); sudo $(MOCK_ENV) $(MOCK) \
+		-v -r $(RPM_PLUGIN_DIR)$(MOCK_CFG) \
+		$(MOCK_EXTRA_OPTS) \
+		$(RPM_BUILD_DEFINES) --shell "/bin/bash -i -l"

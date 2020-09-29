@@ -119,3 +119,6 @@ dist-copy-out:
 		mv -t $$arch_rpm_dir $$arch_chroot_dir/*;\
 	done
 
+### Additional targets
+start-shell:
+	sudo chroot $(CHROOT_DIR) su -c 'cd $(DIST_SRC); env $(CHROOT_ENV) /bin/bash -i -l' - $(RUN_AS_USER)
