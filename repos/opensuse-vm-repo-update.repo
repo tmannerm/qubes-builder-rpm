@@ -1,7 +1,7 @@
 [repo-updates]
 name=Main Update Repository
 enabled=1
-autorefresh=1
+metadata_expire=6h
 #baseurl=http://download.opensuse.org/update/leap/$releasever/oss/
 metalink=http://download.opensuse.org/update/leap/$releasever/oss/repodata/repomd.xml.metalink
 type=rpm-md

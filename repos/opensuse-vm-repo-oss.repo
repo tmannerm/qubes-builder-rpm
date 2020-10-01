@@ -1,7 +1,7 @@
 [repo-oss]
 name=Main Repository
 enabled=1
-autorefresh=1
+metadata_expire=7d
 #baseurl=http://download.opensuse.org/distribution/leap/$releasever/repo/oss/
 metalink=http://download.opensuse.org/distribution/leap/$releasever/repo/oss/repodata/repomd.xml.metalink
 type=rpm-md
