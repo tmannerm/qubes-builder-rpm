@@ -43,9 +43,12 @@ evince-plugin-pdfdocument
 nautilus
 nautilus-evince
 pulseaudio-module-x11
+xdg-user-dirs-gtk
+gvfs gvfs-backends
 --exclude=evolution,gdm
 --exclude=plymouth
 --exclude=vinagre
 --exclude=libreoffice*
 --exclude=avahi
 --exclude=gnome-user-docs
+--exclude=postfix
