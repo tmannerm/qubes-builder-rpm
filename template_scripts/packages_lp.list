@@ -49,6 +49,5 @@ gvfs gvfs-backends
 --exclude=plymouth
 --exclude=vinagre
 --exclude=libreoffice*
---exclude=avahi
 --exclude=gnome-user-docs
 --exclude=postfix
