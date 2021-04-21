@@ -86,6 +86,15 @@ endif
 
 endif
 
+ifeq (opensuse,$(DISTRIBUTION))
+	DIST_VER = $(subst opensuse,,$(DIST))
+	DIST_TAG = suse.tw
+	RPM_BUILD_DEFINES += --define "opensuse $(DIST_VER)"
+
+	RPM_BUILD_DEFINES += --define "python3_pkgversion %{python3_version_nodots}"
+	RPM_QUERY_DEFINES += --define "python3_pkgversion %{python3_version_nodots}"
+endif
+
 RPM_BUILD_DEFINES += --define "dist .$(DIST_TAG)"
 RPM_QUERY_DEFINES += --define "dist .$(DIST_TAG)"
 

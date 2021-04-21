@@ -43,6 +43,14 @@ elif [ "${DIST#centos}" != "${DIST}" ]; then
     fi
 fi
 
+if [ "$DIST" == "tumbleweed" ] || [ "$DIST" == "leap" ]; then
+    DISTRIBUTION="opensuse"
+    DIST_VER="$DIST"
+
+    YUM_OPTS="$YUM_OPTS --releasever=$DIST_VER --exclude=busybox*"
+fi
+
+
 # ==============================================================================
 # Cleanup function
 # ==============================================================================
@@ -62,6 +70,11 @@ function cleanup() {
 function prepareChroot() {
     info "--> Preparing environment..."
     mount -t proc proc "${INSTALLDIR}/proc"
+
+    chroot "${INSTALLDIR}" ln -nsf /proc/self/fd /dev/fd
+    chroot "${INSTALLDIR}" ln -nsf /proc/self/fd/0 /dev/stdin
+    chroot "${INSTALLDIR}" ln -nsf /proc/self/fd/1 /dev/stdout
+    chroot "${INSTALLDIR}" ln -snf /proc/self/fd/2 /dev/stderr
 }
 
 # Enable / disable repository
@@ -86,10 +99,21 @@ function yumInstall() {
     if [ "$YUM" = "dnf" ]; then
         mkdir -p "${INSTALLDIR}/var/lib/dnf"
     fi
+    if [ "${DISTRIBUTION}" = "opensuse" ]; then
+        chmod 4755 "${INSTALLDIR}/usr/bin/mount"
+        chmod 4755 "${INSTALLDIR}/usr/bin/umount"
+        chmod 2755 "${INSTALLDIR}/usr/bin/wall"
+        chmod 2755 "${INSTALLDIR}/usr/bin/write"
+        chmod 4755 "${INSTALLDIR}/usr/bin/su"
+    fi
     mkdir -p "${INSTALLDIR}/tmp/template-builder-repo"
     mount --bind pkgs-for-template "${INSTALLDIR}/tmp/template-builder-repo"
     if [ -e "${INSTALLDIR}/usr/bin/$YUM" ]; then
+        mkdir -p "${INSTALLDIR}/etc/yum.repos.d"
         cp "${SCRIPTSDIR}"/template-builder-repo-$DISTRIBUTION.repo "${INSTALLDIR}/etc/yum.repos.d/"
+        if [ "${DISTRIBUTION}" == "opensuse" ]; then
+            sed -i "s/opensuse/$DIST/" "${INSTALLDIR}/etc/yum.repos.d/template-builder-repo-$DISTRIBUTION.repo"
+        fi
         chroot_cmd $YUM --downloadonly \
             install ${YUM_OPTS} -y "${files[@]}" || exit 1
         find "${INSTALLDIR}/var/cache/dnf" -name '*.rpm' -print0 | xargs -r0 sha256sum
@@ -170,6 +194,9 @@ function yumUpdate() {
     mount --bind pkgs-for-template "${INSTALLDIR}"/tmp/template-builder-repo
     if [ -e "${INSTALLDIR}/usr/bin/$YUM" ]; then
         cp "${SCRIPTSDIR}"/template-builder-repo-$DISTRIBUTION.repo "${INSTALLDIR}"/etc/yum.repos.d/
+        if [ "${DISTRIBUTION}" == "opensuse" ]; then
+            sed -i "s/opensuse/$DIST/" "${INSTALLDIR}/etc/yum.repos.d/template-builder-repo-$DISTRIBUTION.repo"
+        fi
         chroot_cmd $YUM --downloadonly \
             update ${YUM_OPTS} -y "${files[@]}" || exit 1
         find "${INSTALLDIR}"/var/cache/dnf -name '*.rpm' -print0 | xargs -r0 sha256sum
@@ -225,15 +252,15 @@ function installPackages() {
         fi
     else
         # WIP: should be improuved for multiple patterns search
-        if [ "x$TEMPLATE_FLAVOR" != "x" ]; then
+        if [ -n "$TEMPLATE_FLAVOR" ]; then
             getFileLocations packages_list "packages.list" "${DIST}_${TEMPLATE_FLAVOR}"
             if [ -z "${packages_list}" ]; then
-                getFileLocations packages_list "packages.list" "${DIST//[0-9]*}_${TEMPLATE_FLAVOR}"
+                getFileLocations packages_list "packages.list" "${DISTRIBUTION}_${TEMPLATE_FLAVOR}"
             fi
         else
             getFileLocations packages_list "packages.list" "${DIST}"
             if [ -z "${packages_list}" ]; then
-                getFileLocations packages_list "packages.list" "${DIST//[0-9]*}"
+                getFileLocations packages_list "packages.list" "${DISTRIBUTION}"
             fi
         fi
         if [ -z "${packages_list}" ]; then
