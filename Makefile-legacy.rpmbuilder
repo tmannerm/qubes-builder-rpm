@@ -3,9 +3,9 @@
 RPM_BUILD_DEFINES += --define "_rpmdir $(OUTPUT_DIR)/"
 RPM_BUILD_DEFINES += --define "qubes_builder 1"
 RPM_BUILD_DEFINES += --define "backend_vmm $(BACKEND_VMM)"
-RPM_BUILD_DEFINES += --define "source_date_epoch_from_changelog Y"
-RPM_BUILD_DEFINES += --define "clamp_mtime_to_source_date_epoch Y"
-RPM_BUILD_DEFINES += --define "use_source_date_epoch_as_buildtime Y"
+RPM_BUILD_DEFINES += --define "source_date_epoch_from_changelog 1"
+RPM_BUILD_DEFINES += --define "clamp_mtime_to_source_date_epoch 1"
+RPM_BUILD_DEFINES += --define "use_source_date_epoch_as_buildtime 1"
 ifeq (opensuse,$(DISTRIBUTION))
 # Macro set_build_flags is only in RPM v4.15 or in redhat-rpm-macros package (Fedora-based only)
 RPM_BUILD_DEFINES += --define "set_build_flags \
@@ -23,16 +23,13 @@ ifdef REPO_PROXY
     YUM_OPTS += --setopt=proxy=$(REPO_PROXY)
 endif
 
+YUM_OPTS += --installroot=$(CHROOT_DIR)
+
 YUM := dnf
 YUM_BUILDDEP := dnf builddep --spec
 YUM_BUILDDEP_SRPM := dnf builddep --srpm
 
 ifeq (centos,$(DISTRIBUTION))
-ifeq ($(subst centos,,$(DIST)),7)
-YUM := yum
-YUM_BUILDDEP := yum-builddep
-YUM_BUILDDEP_SRPM := yum-builddep
-endif
 ifeq ($(subst centos,,$(DIST)),8)
 YUM_BUILDDEP := dnf builddep --nobest --spec
 YUM_BUILDDEP_SRPM := dnf builddep --srpm
@@ -41,47 +38,40 @@ endif
 
 ### Targets required by Makefile.generic to build packages
 dist-prepare-chroot: $(CHROOT_DIR)/home/user/.prepared_base
-	@if [ ! -r $(CHROOT_DIR)/proc/cpuinfo ]; then\
+	${Q}if [ ! -r $(CHROOT_DIR)/proc/cpuinfo ]; then\
 		sudo mount -t proc proc $(CHROOT_DIR)/proc;\
 	fi
-	@if ! [ -d $(CHROOT_DIR)/tmp/qubes-packages-mirror-repo/rpm ]; then\
-		mkdir -p $(CHROOT_DIR)/tmp/qubes-packages-mirror-repo;\
-		sudo mount --bind $(BUILDER_REPO_DIR) $(CHROOT_DIR)/tmp/qubes-packages-mirror-repo;\
+	${Q}if ! mountpoint -q $(CHROOT_DIR)/dev/shm; then\
+		sudo mkdir -p $(CHROOT_DIR)/dev/shm;\
+		sudo mount -t tmpfs tmpfs $(CHROOT_DIR)/dev/shm;\
 	fi
-	@sudo cp $(RPM_PLUGIN_DIR)yum.conf $(CHROOT_DIR)/etc/yum.conf
 
-$(CHROOT_DIR)/home/user/.prepared_base: $(RPM_PLUGIN_DIR)/prepare-chroot-builder $(RPM_PLUGIN_DIR)/$(BUILD_PKG_LIST)
-	@echo "-> Preparing $(DIST) build environment"
-	@sudo -E $(RPM_PLUGIN_DIR)/prepare-chroot-builder $(CHROOT_DIR) $(DIST) || exit 1
-	@touch $(CHROOT_DIR)/home/user/.prepared_base
-
-.PHONY: refresh-update.dnf
-refresh-update.yum:
-ifndef PACKAGE
-	$(error "PACKAGE need to be set!")
-endif
-	$(RPM_PLUGIN_DIR)/update-local-repo.sh $(DIST)
-	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) $(YUM) --disablerepo=* --enablerepo=qubes-builder-pkgs $(YUM_OPTS) clean all
-	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) sh -c 'cd $(DIST_SRC); $(YUM) $(YUM_OPTS) makecache'
-	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) sh -c 'cd $(DIST_SRC); $(YUM) $(YUM_OPTS) -y update'
+$(CHROOT_DIR)/home/user/.prepared_base: $(RPM_PLUGIN_DIR)/scripts/prepare-chroot-builder $(RPM_PLUGIN_DIR)/dnf/$(BUILD_PKG_LIST)
+	${Q}echo "-> Preparing $(DIST) build environment"
+	${Q}$(RPM_PLUGIN_DIR)/scripts/update-local-repo.sh $(BUILDER_REPO_DIR)
+	${Q}sudo -E $(RPM_PLUGIN_DIR)/scripts/prepare-chroot-builder $(CHROOT_DIR) $(DISTRIBUTION) $(DIST_VER) $(CACHEDIR) $(BUILDER_REPO_DIR) $(RPM_PLUGIN_DIR)/dnf/$(BUILD_PKG_LIST) || exit 1
+	${Q}touch $(CHROOT_DIR)/home/user/.prepared_base
 
 .PHONY: refresh-update.dnf
 refresh-update.dnf:
 ifndef PACKAGE
 	$(error "PACKAGE need to be set!")
 endif
-	$(RPM_PLUGIN_DIR)/update-local-repo.sh $(DIST)
-	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) sh -c 'cd $(DIST_SRC); $(YUM) $(YUM_OPTS) --nobest --allowerasing --skip-broken --refresh -y update'
+	$(RPM_PLUGIN_DIR)/scripts/update-local-repo.sh $(BUILDER_REPO_DIR)
+	sudo $(CHROOT_ENV) $(YUM) $(YUM_OPTS) --refresh -y update
 
 dist-build-dep: refresh-update.$(YUM) dist-build-dep$(suffix $(PACKAGE))
 
+# double parsing makes %-escaping tricky; the below is far from perfect (for
+# example attributes in %files is mishandled), but works good enough to extract build deps
 dist-build-dep.spec:
-	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) bash -c 'cd $(DIST_SRC); $(YUM_BUILDDEP) $(YUM_OPTS) $(RPM_BUILD_EXTRA_DEFINES) -y $(PACKAGE)'
+	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) su -c 'cd "$(DIST_SRC)" && sed "s/\([^:]\)%%\([^{]\)/\1%%%%\2/" $(PACKAGE) > $(PACKAGE).tmp && rpmspec -P --define "_sourcedir $(DIST_SRC)" --define "debug_package %{nil}" $(RPM_QUERY_DEFINES) $(PACKAGE).tmp | sed "s/\([^%]\)%\([^%]\)/\1%%\2/g"> $(PACKAGE).parsed' - $(RUN_AS_USER)
+	sudo $(CHROOT_ENV) $(YUM_BUILDDEP) $(YUM_OPTS) $(RPM_BUILD_EXTRA_DEFINES) -y $(CHROOT_DIR)$(DIST_SRC)/$(PACKAGE).parsed
 
 dist-build-dep.rpm:
 	sudo $(CHROOT_ENV) chroot $(CHROOT_DIR) bash -c 'cd $(DIST_SRC); \
-		rpm2cpio $(PACKAGE) | cpio --extract --to-stdout "*.spec" > $(PACKAGE).spec && \
-		$(YUM_BUILDDEP) $(YUM_OPTS) $(RPM_BUILD_EXTRA_DEFINES) -y $(PACKAGE).spec'
+		rpm2cpio $(PACKAGE) | cpio --extract --to-stdout "*.spec" > $(PACKAGE).spec' && \
+		sudo $(YUM_BUILDDEP) $(YUM_OPTS) $(RPM_BUILD_EXTRA_DEFINES) -y $(CHROOT_DIR)$(DIST_SRC)/$(PACKAGE).spec
 
 dist-package-build: RPM_SOURCE_DIR ?= $(DIST_SRC)
 dist-package-build: RPM_BUILD_DEFINES += --define "_sourcedir $(RPM_SOURCE_DIR)"
@@ -95,15 +85,15 @@ ifdef INCREMENT_DEVEL_VERSIONS
 	echo $(devel_ver) > $(devel_ver_path)
 endif
 ifeq ($(suffix $(PACKAGE)),.rpm)
-	sudo chroot $(CHROOT_DIR) su -c 'cd $(DIST_SRC); env $(CHROOT_ENV) rpmbuild $(RPM_BUILD_DEFINES) --rebuild $(PACKAGE)' - $(RUN_AS_USER)
+	sudo chroot $(CHROOT_DIR) su -c 'cd $(DIST_SRC); env $(CHROOT_ENV) rpmbuild $(RPM_BUILD_DEFINES) --nodeps --rebuild $(PACKAGE)' - $(RUN_AS_USER)
 else
-	sudo chroot $(CHROOT_DIR) su -c 'cd $(DIST_SRC); env $(CHROOT_ENV) rpmbuild $(RPM_BUILD_DEFINES) -bb $(PACKAGE)' - $(RUN_AS_USER)
+	sudo chroot $(CHROOT_DIR) su -c 'cd $(DIST_SRC); env $(CHROOT_ENV) rpmbuild $(RPM_BUILD_DEFINES) --nodeps -bb $(PACKAGE)' - $(RUN_AS_USER)
 endif
 
 dist-copy-out: pkg_list_path = $(ORIG_SRC)/$(OUTPUT_DIR)/$(notdir $(PACKAGE)).list
 dist-copy-out:
 	@echo "--> Done:" >&3
-	@set -e;\
+	${Q}set -e;\
 	shopt -s nullglob;\
 	mkdir -p $(ORIG_SRC)/$(OUTPUT_DIR);\
 	echo -n > $(pkg_list_path);\

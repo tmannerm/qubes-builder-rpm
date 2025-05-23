@@ -1,0 +1,11 @@
+xterm
+tar
+haveged
+sudo
+python3-urllib3
+--exclude=kdegames
+--exclude=firstboot
+--exclude=xorg-x11-drv-nouveau
+--exclude=firewall-config,firewalld
+--exclude=gnome-boxes
+--exclude=yum-utils

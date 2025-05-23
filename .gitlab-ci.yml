@@ -1,0 +1,26 @@
+include:
+  - project: 'QubesOS/qubes-continuous-integration'
+    file: '/r4.2/gitlab-base.yml'
+  - project: 'QubesOS/qubes-continuous-integration'
+    file: '/r4.2/gitlab-vm-fedora-build-template.yml'
+  - project: 'QubesOS/qubes-continuous-integration'
+    file: '/r4.3/gitlab-base.yml'
+  - project: 'QubesOS/qubes-continuous-integration'
+    file: '/r4.3/gitlab-vm-fedora-build-template.yml'
+
+default:
+  tags:
+    - vm
+
+r4.2:prep:sources:
+  extends: .r4.2_components_prepare
+
+checks:shellcheck:
+  stage: checks
+  tags:
+    - docker
+  before_script:
+    - sudo dnf install -y ShellCheck
+    - git config --global --add safe.directory "$(pwd)"
+  script:
+    - shellcheck -e SC1117 $(grep -l '^#!/bin/\(ba\)\?sh' $(git ls-files))
