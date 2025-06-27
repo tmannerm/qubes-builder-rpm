@@ -32,8 +32,7 @@ man
 man-pages
 nautilus
 nautilus-evince
-openSUSE-repos-Leap
-openSUSE-repos-Leap-NVIDIA
+openSUSE-repos-Tumbleweed
 pulseaudio-module-x11
 rsync
 sudo
@@ -49,7 +48,6 @@ xterm
 yast2-proxy
 zip
 --exclude=avahi
---exclude=busybox*
 --exclude=evolution
 --exclude=gdm
 --exclude=gnome-user-docs

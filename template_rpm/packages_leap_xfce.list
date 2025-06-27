@@ -1,13 +1,12 @@
---setopt=strict=false
 --setopt=install_weak_deps=false
 patterns-base-base
 patterns-base-console
 patterns-base-enhanced_base
 patterns-base-x11
+patterns-base-x11_enhanced
 patterns-fonts-fonts
-patterns-gnome-gnome
-patterns-gnome-gnome_basic
-patterns-gnome-gnome_multimedia
+patterns-fonts-fonts_opt
+patterns-xfce-xfce
 attr
 bc
 bzip2
@@ -31,9 +30,7 @@ lsof
 man
 man-pages
 nautilus
-nautilus-evince
 openSUSE-repos-Leap
-openSUSE-repos-Leap-NVIDIA
 pulseaudio-module-x11
 rsync
 sudo

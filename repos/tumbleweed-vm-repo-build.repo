@@ -1,0 +1,11 @@
+# OBS repositories that contains some required packages missing from standard repos
+[obs-qubes-build]
+name=Qubes OS build requirements
+type=rpm-md
+baseurl=https://download.opensuse.org/repositories/home:/wicked:/qubes-build:/tw/tw
+#metalink=https://download.opensuse.org/repositories/home:/wicked:/qubes-build:/tw/tw/repodata/repomd.xml.metalink
+gpgkey=https://download.opensuse.org/repositories/home:/wicked:/qubes-build:/tw/tw/repodata/repomd.xml.key
+gpgcheck=1
+enabled=1
+skip_if_unavailable=True
+metadata_expire=6h

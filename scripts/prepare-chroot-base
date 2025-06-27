@@ -83,6 +83,31 @@ if ! [ -f "${INSTALL_DIR}/tmp/.prepared_base" ]; then
             "${PLUGIN_DIR}/keys/RPM-GPG-KEY-EPEL-${DIST_VER}"
     fi
 
+    if [ "${DIST_NAME}" = "leap" ] && [ "${DIST_VER}" != "16.0" ]; then
+        rpm "${RPM_OPTS[@]}" --import --root="${INSTALL_DIR}" -- \
+            "/usr/share/distribution-gpg-keys/opensuse/RPM-GPG-KEY-openSUSE-2022" \
+            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-SUSE-SLE-15" \
+            "/usr/share/distribution-gpg-keys/suse/RPM-GPG-KEY-SuSE-SLE-Main-2023" \
+            "/usr/share/distribution-gpg-keys/suse/RPM-GPG-KEY-SuSE-SLE-Backup-2023" \
+            "/usr/share/distribution-gpg-keys/opensuse/RPM-GPG-KEY-openSUSE-Backports-2023" \
+            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-openSUSE-qubes-build"
+    fi
+
+    if [ "${DIST_NAME}" = "leap" ] && [ "${DIST_VER}" = "16.0" ]; then
+        rpm "${RPM_OPTS[@]}" --import --root="${INSTALL_DIR}" -- \
+            "/usr/share/distribution-gpg-keys/opensuse/RPM-GPG-KEY-openSUSE-2022" \
+            "/usr/share/distribution-gpg-keys/suse/RPM-GPG-KEY-SuSE-ALP-Main" \
+            "/usr/share/distribution-gpg-keys/suse/RPM-GPG-KEY-SuSE-ALP-Backup" \
+            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-openSUSE-SLE16-Backports" \
+            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-openSUSE-qubes-build"
+    fi
+
+    if [ "${DIST_NAME}" = "tumbleweed" ]; then
+        rpm "${RPM_OPTS[@]}" --import --root="${INSTALL_DIR}" -- \
+            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-openSUSE-Tumbleweed" \
+            "${PLUGIN_DIR}/keys/RPM-GPG-KEY-openSUSE-qubes-build"
+    fi
+
     echo "INFO: Retrieving core RPM packages..."
 
     if [ "${DIST_NAME}" = "fedora" ]; then
@@ -187,19 +212,60 @@ if ! [ -f "${INSTALL_DIR}/tmp/.prepared_base" ]; then
         fi
     fi
 
-    if [ "${DIST_NAME}" = "opensuse" ]; then
-        INITIAL_PACKAGES="filesystem aaa_base openSUSE-release dnf dnf-plugins-core"
+    if [ "${DIST_NAME}" = "leap" ] || [ "${DIST_NAME}" = "tumbleweed" ]; then
+        INITIAL_PACKAGES=(patterns-base-base filesystem aaa_base)
+
+        if [ "${DIST_NAME}" = "tumbleweed" ]; then
+            # NOTE: Tumbleweed does have dnf5 but it's not usable with Qubes build at the
+            #       moment due to difference in behaviour
+            # INITIAL_PACKAGES+=(dnf5 dnf5-plugins rpm-repos-openSUSE-Tumbleweed)
+            INITIAL_PACKAGES+=(dnf dnf-plugins-core openSUSE-release rpm-repos-openSUSE-Tumbleweed)
+            # Make sure correct systemd branding packages are installed
+            INITIAL_PACKAGES=(--exclude=systemd-presets-branding-SUSE "${INITIAL_PACKAGES[@]}")
+            INITIAL_PACKAGES=(--exclude=systemd-presets-branding-Aeon "${INITIAL_PACKAGES[@]}")
+            INITIAL_PACKAGES=(--exclude=systemd-presets-branding-Kalpa "${INITIAL_PACKAGES[@]}")
+            INITIAL_PACKAGES=(--exclude=systemd-presets-branding-MicroOS "${INITIAL_PACKAGES[@]}")
+            INITIAL_PACKAGES=(--exclude=systemd-default-settings-branding-SLE "${INITIAL_PACKAGES[@]}")
+            INITIAL_PACKAGES=(--exclude=systemd-default-settings-branding-SLE-Micro "${INITIAL_PACKAGES[@]}")
+            INITIAL_PACKAGES+=(systemd-presets-branding-openSUSE systemd-default-settings-branding-openSUSE)
+        else
+            if [ "${DIST_VER}" = "16.0" ]; then
+                INITIAL_PACKAGES+=(Leap-release)
+            else
+                INITIAL_PACKAGES+=(openSUSE-release)
+            fi
+            INITIAL_PACKAGES+=(dnf dnf-plugins-core rpm-repos-openSUSE-Leap)
+        fi
+
+        # Sometimes busybox is installed instead of coreutils
+        INITIAL_PACKAGES+=(--exclude=busybox*)
+
+        # Prefer full wicked networking instead of arping2 only
+        INITIAL_PACKAGES+=(--exclude=arping2)
 
         mkdir -p -- "${DOWNLOAD_DIR}"
         yumconf=$(mktemp)
 
-        sed -e "s/\\\$releasever/${DIST_VER}/g" \
-            <"${DNF_BOOTSTRAP_CONF}" \
-            >"$yumconf"
-
-        # Only use configured repositories (host repos will fail to fetch)
-        DNF_OPTS+=("--repo=repo-oss")
-        DNF_OPTS+=("--repo=repo-updates")
+        if [ "x${OPENSUSE_MIRROR}" != "x" ]; then
+            awk '
+            BEGIN {
+                mirror=ARGV[1];     delete ARGV[1];
+                releasever=ARGV[2]; delete ARGV[2];
+            }
+            {
+                gsub("^metalink", "#metalink");
+                gsub("^#baseurl=.*opensuse.org/", "baseurl=" mirror "/");
+                gsub("\\$releasever", releasever);
+                print;
+            }' "${OPENSUSE_MIRROR%/}" "${DIST_VER}" \
+                <"${DNF_BOOTSTRAP_CONF}" \
+                >"$yumconf"
+        else
+            sed -e "s/\\\$releasever/${DIST_VER}/g" \
+                -e "s#\\\$plugindir#${PLUGIN_DIR}#g" \
+                <"${DNF_BOOTSTRAP_CONF}" \
+                >"$yumconf"
+        fi
     fi
 
     "$DNF" download -y "${DNF_OPTS[@]}" -c "$yumconf" "${INITIAL_PACKAGES[@]}"
@@ -226,7 +292,7 @@ if ! [ -f "${INSTALL_DIR}/tmp/.prepared_base" ]; then
 
     # Prepare /dev nodes
     mkdir -p "${INSTALL_DIR}/dev/"
-    for f in null urandom zero random console; do
+    for f in null urandom zero random console fd; do
         cp -a "/dev/$f" "$INSTALL_DIR/dev/" || true
     done
 
@@ -239,15 +305,6 @@ if ! [ -f "${INSTALL_DIR}/tmp/.prepared_base" ]; then
 
     mkdir -p "${INSTALL_DIR}/proc"
     mount -t proc proc "${INSTALL_DIR}/proc"
-
-    if grep -q openSUSE /etc/os-release; then
-        # Build the rpmdb again, in case of huge rpm version difference that makes
-        # rpmdb --rebuilddb doesn't work anymore. Export using rpm from outside
-        # chroot and import using rpm from within chroot
-        rpmdb "${RPM_OPTS[@]}" --root="${INSTALL_DIR}" --exportdb > "${CACHEDIR}/rpmdb.export" || exit 1
-        rm -rf "${INSTALL_DIR}/var/lib/rpm"
-        chroot "${INSTALL_DIR}" rpmdb --importdb < "${CACHEDIR}/rpmdb.export" || exit 1
-    fi
 
     echo "INFO: Installing core RPM packages..."
     rpm "${RPM_OPTS[@]}" -U --replacepkgs --root="${INSTALL_DIR}" -- "${DOWNLOAD_DIR}/"*.rpm || exit 1
@@ -273,12 +330,16 @@ if [ "${DIST_NAME}" = "centos-stream" ] || [ "${DIST_NAME}" = "centos" ]; then
     fi
 fi
 
-if [ "${DIST_NAME}" = "opensuse" ]; then
-    # Instead of commenting/uncommenting lines in repository files which don't exist in OpenSUSE,
-    # just put actual repository files in place to be used with dnf.
+if [ "${DIST_NAME}" = "leap" ]; then
+    # Additional repos
     mkdir -p "${INSTALL_DIR}/etc/yum.repos.d/"
-    cp -d "${PLUGIN_DIR}/repos/opensuse-vm-repo-oss.repo" "${INSTALL_DIR}/etc/yum.repos.d/repo-oss.repo"
-    cp -d "${PLUGIN_DIR}/repos/opensuse-vm-repo-update.repo" "${INSTALL_DIR}/etc/yum.repos.d/repo-updates.repo"
+    cp -d "${PLUGIN_DIR}/repos/leap-vm-repo-build.repo" "${INSTALL_DIR}/etc/yum.repos.d/repo-obs-build.repo"
+fi
+
+if [ "${DIST_NAME}" = "tumbleweed" ]; then
+    # Additional repos
+    mkdir -p "${INSTALL_DIR}/etc/yum.repos.d/"
+    cp -d "${PLUGIN_DIR}/repos/tumbleweed-vm-repo-build.repo" "${INSTALL_DIR}/etc/yum.repos.d/repo-obs-build.repo"
 fi
 
 touch "${INSTALL_DIR}/tmp/.prepared_base"

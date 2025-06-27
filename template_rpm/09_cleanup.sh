@@ -33,7 +33,9 @@ DNF_CONF="${TEMPLATE_CONTENT_DIR}/../dnf/dnf.conf"
 
 set -e
 rootdir=$(readlink -f "${INSTALL_DIR}")
-dnf -c "${DNF_CONF}" "${DNF_OPTS[@]}" clean packages "--installroot=$rootdir"
+# Can't use $DNF_OPTS because there's no repos to set mirror parameters
+#dnf -c "${DNF_CONF}" "${DNF_OPTS[@]}" clean packages "--installroot=$rootdir"
+dnf -c "${DNF_CONF}" "-y" clean packages "--installroot=$rootdir"
 
 # Make sure that rpm database has right format (for rpm version in template, not host)
 echo "--> Rebuilding rpm database..."

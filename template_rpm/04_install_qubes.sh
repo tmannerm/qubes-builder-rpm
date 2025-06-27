@@ -54,7 +54,7 @@ if [ -n "$USE_QUBES_REPO_VERSION" ]; then
     fi
     if [ "${DIST_NAME}" = "centos-stream" ]; then
         key_dist=centos
-    elif [ "${DIST_NAME}" = "opensuse" ]; then
+    elif [ "${DIST_NAME}" = "leap" ] || [ "${DIST_NAME}" = "tumbleweed" ]; then
         key_dist=opensuse
     else
         key_dist="${DIST_NAME}"

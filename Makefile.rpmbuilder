@@ -89,7 +89,7 @@ endif
 
 endif
 
-ifeq (opensuse,$(DISTRIBUTION))
+ifeq (leap,$(DISTRIBUTION))
 	DIST_VER = $(subst lp,,$(DIST))
 	DIST_VER := $(shell sed 's/.\{1\}$$/.&/' <<< "$(DIST_VER)")
 
@@ -100,23 +100,8 @@ ifeq (opensuse,$(DISTRIBUTION))
 
 ifdef OPENSUSE_MIRROR
 	YUM_OPTS += --setopt=repo-oss.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/distribution/leap/$(DIST_VER)/repo/oss --setopt=repo-oss.metalink=
-	YUM_OPTS += --setopt=repo-updates.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/update/leap/$(DIST_VER)/oss --setopt=repo-updates.metalink=
-endif
-
-endif
-
-ifeq (opensuse,$(DISTRIBUTION))
-	DIST_VER = $(subst lp,,$(DIST))
-	DIST_VER := $(shell sed 's/.\{1\}$$/.&/' <<< "$(DIST_VER)")
-
-	RPM_BUILD_DEFINES += --define "opensuse $(DIST_VER)"
-	RPM_QUERY_DEFINES += --define "opensuse $(DIST_VER)"
-
-	BUILD_PKG_LIST = build-pkgs-base-opensuse.list
-
-ifdef OPENSUSE_MIRROR
-	YUM_OPTS += --setopt=repo-oss.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/distribution/leap/$(DIST_VER)/repo/oss
-	YUM_OPTS += --setopt=repo-updates.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/update/leap/$(DIST_VER)/oss
+	YUM_OPTS += --setopt=repo-oss-updates.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/update/leap/$(DIST_VER)/oss --setopt=repo-oss-updates.metalink=
+	YUM_OPTS += --setopt=repo-sle-updates.baseurl=$(patsubst %/,%,$(OPENSUSE_MIRROR))/update/leap/$(DIST_VER)/sle --setopt=repo-sle-updates.metalink=
 endif
 
 endif

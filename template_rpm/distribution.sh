@@ -16,6 +16,9 @@ if [ "0${IS_LEGACY_BUILDER}" -eq 1 ]; then
     elif [ "${DIST#centos-stream}" != "${DIST}" ]; then
         DIST_NAME="centos-stream"
         DIST_VER="${DIST#centos-stream}"
+    elif [ "${DIST#opensuse}" != "${DIST}" ]; then
+        DIST_NAME="opensuse"
+        DIST_VER="${DIST#lp}"
     fi
 fi
 
@@ -61,13 +64,16 @@ elif [ "${DIST_NAME}" == "centos-stream" ]; then
     fi
 elif [ "${DIST_NAME}" == "leap" ]; then
     if [ -n "${OPENSUSE_MIRROR}" ]; then
-        DNF_OPTS+=("--setopt=repo-oss.baseurl=${OPENSUSE_MIRROR%/}/distribution/leap/${DIST_VER}/repo/oss")
-        DNF_OPTS+=("--setopt=repo-updates.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/oss")
-        DNF_OPTS+=("--setopt=repo-updates.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/oss")
+        DNF_OPTS+=("--setopt=opensuse-leap-oss.baseurl=${OPENSUSE_MIRROR%/}/distribution/leap/${DIST_VER}/repo/oss")
+        if [ "${DIST_VER}" != "16.0" ]; then
+            DNF_OPTS+=("--setopt=opensuse-leap-oss-updates.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/oss")
+            DNF_OPTS+=("--setopt=opensuse-leap-sle-updates.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/sle")
+            DNF_OPTS+=("--setopt=opensuse-leap-backports.baseurl=${OPENSUSE_MIRROR%/}/update/leap/${DIST_VER}/backports")
+        fi
     fi
 elif [ "${DIST_NAME}" == "tumbleweed" ]; then
     if [ -n "${OPENSUSE_MIRROR}" ]; then
-        DNF_OPTS+=("--setopt=repo-tumbleweed.baseurl=${OPENSUSE_MIRROR%/}/tumbleweed/")
+        DNF_OPTS+=("--setopt=opensuse-tumbleweed-oss.baseurl=${OPENSUSE_MIRROR%/}/tumbleweed/repo/oss")
     fi
 fi
 
